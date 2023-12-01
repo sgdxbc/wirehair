@@ -8,6 +8,7 @@ fn main() {
         dst.join("lib").display()
     );
     println!("cargo:rustc-link-lib=static=wirehair");
+    println!("cargo:rustc-link-lib=dylib=stdc++");
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for

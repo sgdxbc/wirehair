@@ -68,6 +68,9 @@ pub struct Encoder {
     block_bytes: u32,
 }
 
+unsafe impl Send for Encoder {}
+unsafe impl Sync for Encoder {}
+
 impl Drop for Encoder {
     fn drop(&mut self) {
         unsafe { bindings::wirehair_free(self.codec) }
@@ -115,6 +118,9 @@ pub struct Decoder {
     message_bytes: u64,
     block_bytes: u32,
 }
+
+unsafe impl Send for Decoder {}
+unsafe impl Sync for Decoder {}
 
 impl Drop for Decoder {
     fn drop(&mut self) {
