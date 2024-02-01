@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use std::{fmt::Display, ptr::null_mut, sync::OnceLock};
+use std::{fmt::Display, mem::forget, ptr::null_mut, sync::OnceLock};
 
 pub mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
@@ -62,10 +62,12 @@ fn init() -> Result<(), Error> {
 
 static INIT: OnceLock<Result<(), Error>> = OnceLock::new();
 
+#[allow(unused)]
 #[derive(Debug)]
 pub struct Encoder {
     codec: bindings::WirehairCodec,
     block_bytes: u32,
+    message: Option<Vec<u8>>, // better to be referenced, but just for simplicity for now
 }
 
 unsafe impl Send for Encoder {}
@@ -78,7 +80,7 @@ impl Drop for Encoder {
 }
 
 impl Encoder {
-    pub fn new(message: &[u8], block_bytes: u32) -> Result<Self, Error> {
+    pub fn new(message: Vec<u8>, block_bytes: u32) -> Result<Self, Error> {
         (*INIT.get_or_init(init))?;
         let codec = unsafe {
             bindings::wirehair_encoder_create(
@@ -89,7 +91,11 @@ impl Encoder {
             )
         };
         if !codec.is_null() {
-            Ok(Self { codec, block_bytes })
+            Ok(Self {
+                codec,
+                block_bytes,
+                message: Some(message),
+            })
         } else {
             Err(Error::Error)
         }
@@ -117,6 +123,7 @@ pub struct Decoder {
     codec: bindings::WirehairCodec,
     message_bytes: u64,
     block_bytes: u32,
+    blocks: Vec<Vec<u8>>,
 }
 
 unsafe impl Send for Decoder {}
@@ -138,13 +145,14 @@ impl Decoder {
                 codec,
                 message_bytes,
                 block_bytes,
+                blocks: Default::default(),
             })
         } else {
             Err(Error::Error)
         }
     }
 
-    pub fn decode(&mut self, block_id: u32, block_data: &[u8]) -> Result<bool, Error> {
+    pub fn decode(&mut self, block_id: u32, block_data: Vec<u8>) -> Result<bool, Error> {
         let result = unsafe {
             bindings::wirehair_decode(
                 self.codec,
@@ -153,6 +161,7 @@ impl Decoder {
                 block_data.len() as _,
             )
         };
+        self.blocks.push(block_data);
         if result == bindings::WirehairResult_t_Wirehair_NeedMore {
             Ok(false)
         } else {
@@ -174,9 +183,12 @@ impl TryFrom<Decoder> for Encoder {
 
     fn try_from(value: Decoder) -> Result<Self, Self::Error> {
         to_result(unsafe { bindings::wirehair_decoder_becomes_encoder(value.codec) })?;
-        Ok(Self {
+        let encoder = Self {
             codec: value.codec,
             block_bytes: value.block_bytes,
-        })
+            message: None,
+        };
+        forget(value);
+        Ok(encoder)
     }
 }
