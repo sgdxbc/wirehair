@@ -123,7 +123,6 @@ pub struct Decoder {
     codec: bindings::WirehairCodec,
     message_bytes: u64,
     block_bytes: u32,
-    blocks: Vec<Vec<u8>>,
 }
 
 unsafe impl Send for Decoder {}
@@ -145,14 +144,13 @@ impl Decoder {
                 codec,
                 message_bytes,
                 block_bytes,
-                blocks: Default::default(),
             })
         } else {
             Err(Error::Error)
         }
     }
 
-    pub fn decode(&mut self, block_id: u32, block_data: Vec<u8>) -> Result<bool, Error> {
+    pub fn decode(&mut self, block_id: u32, block_data: &[u8]) -> Result<bool, Error> {
         let result = unsafe {
             bindings::wirehair_decode(
                 self.codec,
@@ -161,7 +159,6 @@ impl Decoder {
                 block_data.len() as _,
             )
         };
-        self.blocks.push(block_data);
         if result == bindings::WirehairResult_t_Wirehair_NeedMore {
             Ok(false)
         } else {

@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let mut decoder = wirehair::Decoder::new(message.len() as _, 1 << 20)?;
     for i in 0.. {
         let block = encoder.encode(i)?;
-        if decoder.decode(i, block)? {
+        if decoder.decode(i, &block)? {
             break;
         }
     }
@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         }
         println!("{time:?}");
         if !decoded {
-            decoded = decoder.decode(id, block)?;
+            decoded = decoder.decode(id, &block)?;
             if decoded {
                 println!("(decoded)")
             }

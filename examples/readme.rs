@@ -17,7 +17,7 @@ fn main() -> Result<(), wirehair::Error> {
         }
         needed += 1;
         let packet = encoder.encode(block_id)?;
-        if decoder.decode(block_id, packet)? {
+        if decoder.decode(block_id, &packet)? {
             break;
         }
     }
